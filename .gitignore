@@ -1,0 +1,21 @@
+# Frontend
+frontend/
+
+# Mobile
+mobile/
+
+# Node modules
+**/node_modules/
+
+# Environment
+.env
+
+# Next.js
+.next/
+
+# Expo
+.expo/
+
+# Build
+dist/
+build/
