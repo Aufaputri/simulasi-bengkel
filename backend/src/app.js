@@ -1,13 +1,14 @@
 import express from "express";
 import cors from "cors";
 import db from "./config/database.js";
-import authRoutes from "./routes/authRoutes.js";
+import authRoutes from "./routes/authroutes.js";
 import verifyToken from "./middleware/verifyToken.js";
 import roleMiddleware from "./middleware/roleMiddleware.js";
 import layananRoutes from "./routes/layananRoutes.js";
 import kendaraanRoutes from "./routes/kendaraanRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import pelangganRoutes from "./routes/pelangganRoutes.js";
 
 const app = express();
 
@@ -21,7 +22,7 @@ app.use("/layanan", layananRoutes);
 app.use("/kendaraan", kendaraanRoutes);
 app.use("/booking", bookingRoutes);
 app.use("/dashboard", dashboardRoutes);
-
+app.use("/pelanggan", pelangganRoutes);
 // Route utama
 app.get("/", (req, res) => {
     res.json({
