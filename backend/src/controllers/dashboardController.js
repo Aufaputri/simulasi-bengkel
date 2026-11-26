@@ -30,12 +30,25 @@ export const getDashboard = async (req, res) => {
             "SELECT COUNT(*) AS total FROM booking WHERE status = 'Selesai'"
         );
 
+        // Saldo / pendapatan hanya dihitung dari pembayaran yang sudah di-ACC / dikonfirmasi LUNAS oleh admin
         const [[pendapatan]] = await db.query(`
-            SELECT COALESCE(SUM(layanan.harga), 0) AS total_pendapatan
-            FROM booking
-            JOIN detail_booking ON booking.id = detail_booking.booking_id
-            JOIN layanan ON detail_booking.layanan_id = layanan.id
-            WHERE booking.status = 'Selesai'
+            SELECT COALESCE(SUM(
+                COALESCE(
+                    NULLIF(pembayaran.gross_amount, 0),
+                    sub_biaya.total_biaya
+                )
+            ), 0) AS total_pendapatan
+            FROM pembayaran
+            JOIN booking ON pembayaran.booking_id = booking.id
+            LEFT JOIN (
+                SELECT
+                    detail_booking.booking_id,
+                    COALESCE(SUM(layanan.harga), 0) AS total_biaya
+                FROM detail_booking
+                JOIN layanan ON detail_booking.layanan_id = layanan.id
+                GROUP BY detail_booking.booking_id
+            ) AS sub_biaya ON booking.id = sub_biaya.booking_id
+            WHERE pembayaran.status_pembayaran = 'lunas'
         `);
 
         res.json({

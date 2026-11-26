@@ -19,3 +19,4 @@ mobile/
 # Build
 dist/
 build/
+backend/.env
