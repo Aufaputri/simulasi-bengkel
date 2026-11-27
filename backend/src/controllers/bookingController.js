@@ -67,6 +67,42 @@
 //     }
 // };
 
+// const getLatestPaymentMap = async (bookingIds) => {
+//     const payMap = new Map();
+//     if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
+//         return payMap;
+//     }
+
+//     try {
+//         const [payRows] = await db.query(
+//             `SELECT
+//                 id,
+//                 booking_id,
+//                 order_id,
+//                 metode_pembayaran,
+//                 status_pembayaran,
+//                 payment_type,
+//                 midtrans_transaction_id,
+//                 redirect_url,
+//                 paid_at
+//              FROM pembayaran
+//              WHERE booking_id IN (?)
+//              ORDER BY id DESC`,
+//             [bookingIds]
+//         );
+
+//         for (const p of payRows) {
+//             if (!payMap.has(p.booking_id)) {
+//                 payMap.set(p.booking_id, p);
+//             }
+//         }
+//     } catch (payErr) {
+//         console.warn("Info pembayaran belum tersedia:", payErr.message);
+//     }
+
+//     return payMap;
+// };
+
 // // Pelanggan: membuat booking baru (mendukung 1 atau banyak layanan)
 // export const createBooking = async (req, res) => {
 //     try {
@@ -138,7 +174,6 @@
 // };
 
 // // Pelanggan: melihat riwayat & status booking miliknya
-// // Pelanggan: melihat riwayat & status booking miliknya
 // export const getBooking = async (req, res) => {
 //     try {
 //         const [rows] = await db.query(
@@ -172,34 +207,19 @@
 //             [req.user.id]
 //         );
 
-//         let payMap = new Map();
-//         if (rows.length > 0) {
-//             try {
-//                 const bookingIds = rows.map((r) => r.id);
-//                 const [payRows] = await db.query(
-//                     `SELECT booking_id, metode_pembayaran, status_pembayaran, redirect_url, paid_at
-//                      FROM pembayaran
-//                      WHERE booking_id IN (?)
-//                      ORDER BY id DESC`,
-//                     [bookingIds]
-//                 );
-//                 for (const p of payRows) {
-//                     if (!payMap.has(p.booking_id)) {
-//                         payMap.set(p.booking_id, p);
-//                     }
-//                 }
-//             } catch (payErr) {
-//                 console.warn("Info pembayaran belum tersedia:", payErr.message);
-//             }
-//         }
+//         const payMap = await getLatestPaymentMap(rows.map((r) => r.id));
 
 //         const formatted = rows.map((row) => {
 //             const pay = payMap.get(row.id) || null;
 //             const names = row.nama_layanan ? row.nama_layanan.split(", ") : [];
 //             return {
 //                 ...row,
+//                 pembayaran_id: pay?.id || null,
+//                 order_id: pay?.order_id || null,
 //                 metode_pembayaran: pay?.metode_pembayaran || null,
 //                 status_pembayaran: pay?.status_pembayaran || "belum_bayar",
+//                 payment_type: pay?.payment_type || null,
+//                 midtrans_paid: Boolean(pay?.midtrans_transaction_id),
 //                 redirect_url: pay?.redirect_url || null,
 //                 paid_at: pay?.paid_at || null,
 //                 layanan: names.map((nama) => ({ nama_layanan: nama })),
@@ -219,7 +239,7 @@
 //     }
 // };
 
-// // Pelanggan / Admin: melihat detail 1 booking beserta rincian layanan
+// // Pelanggan / Admin: melihat detail 1 booking beserta rincian layanan & pembayaran
 // export const getBookingById = async (req, res) => {
 //     try {
 //         const { id } = req.params;
@@ -282,13 +302,24 @@
 //             0
 //         );
 
+//         const payMap = await getLatestPaymentMap([bookingData.id]);
+//         const pay = payMap.get(bookingData.id) || null;
+
 //         res.json({
 //             success: true,
 //             data: {
 //                 ...bookingData,
 //                 layanan: layananItems,
 //                 layanan_ids: layananItems.map((l) => l.id),
-//                 total_harga
+//                 total_harga,
+//                 pembayaran_id: pay?.id || null,
+//                 order_id: pay?.order_id || null,
+//                 metode_pembayaran: pay?.metode_pembayaran || null,
+//                 status_pembayaran: pay?.status_pembayaran || "belum_bayar",
+//                 payment_type: pay?.payment_type || null,
+//                 midtrans_paid: Boolean(pay?.midtrans_transaction_id),
+//                 redirect_url: pay?.redirect_url || null,
+//                 paid_at: pay?.paid_at || null,
 //             }
 //         });
 //     } catch (error) {
@@ -299,7 +330,7 @@
 //     }
 // };
 
-// // Admin: melihat semua booking (mendukung pencarian & filter status/tanggal)
+// // Admin: melihat semua booking (mendukung pencarian & filter status/tanggal + info pembayaran)
 // export const getAllBooking = async (req, res) => {
 //     try {
 //         const { search, status, tanggal } = req.query;
@@ -368,10 +399,26 @@
 //         query += ` GROUP BY booking.id ORDER BY booking.created_at DESC`;
 
 //         const [rows] = await db.query(query, params);
+//         const payMap = await getLatestPaymentMap(rows.map((r) => r.id));
+
+//         const formatted = rows.map((row) => {
+//             const pay = payMap.get(row.id) || null;
+//             return {
+//                 ...row,
+//                 pembayaran_id: pay?.id || null,
+//                 order_id: pay?.order_id || null,
+//                 metode_pembayaran: pay?.metode_pembayaran || null,
+//                 status_pembayaran: pay?.status_pembayaran || "belum_bayar",
+//                 payment_type: pay?.payment_type || null,
+//                 midtrans_paid: Boolean(pay?.midtrans_transaction_id),
+//                 redirect_url: pay?.redirect_url || null,
+//                 paid_at: pay?.paid_at || null,
+//             };
+//         });
 
 //         res.json({
 //             success: true,
-//             data: rows
+//             data: formatted
 //         });
 //     } catch (error) {
 //         console.error("ERROR GET ALL BOOKING:", error);
@@ -654,6 +701,22 @@ import db from "../config/database.js";
 import { generateKodeBooking } from "../utils/generateKodeBooking.js";
 
 const VALID_STATUSES = ["Menunggu", "Diproses", "Selesai"];
+const JAM_BUKA = "07:30";
+const JAM_TUTUP = "19:00";
+
+const normalizeJamHHMM = (rawJam) => {
+    if (typeof rawJam !== "string") return null;
+    const trimmed = rawJam.trim();
+    const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+    if (!match) return null;
+    const hh = String(Number(match[1])).padStart(2, "0");
+    const mm = match[2];
+    return `${hh}:${mm}`;
+};
+
+const isWithinJamOperasional = (jamHHMM) => {
+    return jamHHMM >= JAM_BUKA && jamHHMM <= JAM_TUTUP;
+};
 
 const normalizeLayananIds = (layanan_ids, layanan_id) => {
     let ids = [];
@@ -755,6 +818,68 @@ const getLatestPaymentMap = async (bookingIds) => {
     return payMap;
 };
 
+// Pelanggan: cek jumlah antrian & daftar kendaraan pada tanggal & jam tertentu
+export const getAntrianJadwal = async (req, res) => {
+    try {
+        const { tanggal, jam } = req.query;
+
+        if (!tanggal || !/^\d{4}-\d{2}-\d{2}$/.test(String(tanggal).trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Parameter tanggal wajib diisi dengan format YYYY-MM-DD"
+            });
+        }
+
+        const normalizedJam = normalizeJamHHMM(jam || "");
+        if (!normalizedJam) {
+            return res.status(400).json({
+                success: false,
+                message: "Parameter jam wajib diisi dengan format HH:MM (contoh: 09:00)"
+            });
+        }
+
+        const cleanTanggal = String(tanggal).trim();
+
+        const [rows] = await db.query(
+            `SELECT
+                booking.id,
+                booking.kode_booking,
+                booking.jam_booking,
+                booking.status,
+                kendaraan.merk,
+                kendaraan.tipe,
+                kendaraan.plat_nomor,
+                kendaraan.warna
+             FROM booking
+             JOIN kendaraan ON booking.kendaraan_id = kendaraan.id
+             WHERE DATE_FORMAT(booking.tanggal_booking, '%Y-%m-%d') = ?
+               AND TIME_FORMAT(booking.jam_booking, '%H:%i') = ?
+               AND booking.status IN ('Menunggu', 'Diproses')
+             ORDER BY booking.created_at ASC, booking.id ASC`,
+            [cleanTanggal, normalizedJam]
+        );
+
+        res.json({
+            success: true,
+            data: {
+                tanggal: cleanTanggal,
+                jam: normalizedJam,
+                jam_buka: JAM_BUKA,
+                jam_tutup: JAM_TUTUP,
+                dalam_jam_operasional: isWithinJamOperasional(normalizedJam),
+                jumlah_antrian: rows.length,
+                daftar_kendaraan: rows
+            }
+        });
+    } catch (error) {
+        console.error("ERROR GET ANTRIAN JADWAL:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 // Pelanggan: membuat booking baru (mendukung 1 atau banyak layanan)
 export const createBooking = async (req, res) => {
     try {
@@ -773,6 +898,21 @@ export const createBooking = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Kendaraan, minimal 1 layanan, tanggal booking, dan jam booking wajib diisi"
+            });
+        }
+
+        const normalizedJam = normalizeJamHHMM(jam_booking);
+        if (!normalizedJam) {
+            return res.status(400).json({
+                success: false,
+                message: "Format jam booking tidak valid. Gunakan format HH:MM (contoh: 08:30)"
+            });
+        }
+
+        if (!isWithinJamOperasional(normalizedJam)) {
+            return res.status(400).json({
+                success: false,
+                message: `Jam booking di luar jam operasional bengkel (${JAM_BUKA} - ${JAM_TUTUP})`
             });
         }
 
@@ -807,7 +947,7 @@ export const createBooking = async (req, res) => {
             kendaraanId: kendaraan_id,
             layananIds: selectedLayananIds,
             tanggalBooking: tanggal_booking,
-            jamBooking: jam_booking,
+            jamBooking: normalizedJam,
             keluhan
         });
 
@@ -1106,6 +1246,21 @@ export const adminCreateBooking = async (req, res) => {
             });
         }
 
+        const normalizedJam = normalizeJamHHMM(jam_booking);
+        if (!normalizedJam) {
+            return res.status(400).json({
+                success: false,
+                message: "Format jam booking tidak valid. Gunakan format HH:MM (contoh: 08:30)"
+            });
+        }
+
+        if (!isWithinJamOperasional(normalizedJam)) {
+            return res.status(400).json({
+                success: false,
+                message: `Jam booking di luar jam operasional bengkel (${JAM_BUKA} - ${JAM_TUTUP})`
+            });
+        }
+
         if (!VALID_STATUSES.includes(bookingStatus)) {
             return res.status(400).json({
                 success: false,
@@ -1142,7 +1297,7 @@ export const adminCreateBooking = async (req, res) => {
             kendaraanId: kendaraan_id,
             layananIds: selectedLayananIds,
             tanggalBooking: tanggal_booking,
-            jamBooking: jam_booking,
+            jamBooking: normalizedJam,
             keluhan,
             status: bookingStatus
         });
@@ -1184,6 +1339,23 @@ export const adminUpdateBooking = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Pelanggan, kendaraan, minimal 1 layanan, tanggal, dan jam booking wajib diisi"
+            });
+        }
+
+        const normalizedJam = normalizeJamHHMM(jam_booking);
+        if (!normalizedJam) {
+            conn.release();
+            return res.status(400).json({
+                success: false,
+                message: "Format jam booking tidak valid. Gunakan format HH:MM (contoh: 08:30)"
+            });
+        }
+
+        if (!isWithinJamOperasional(normalizedJam)) {
+            conn.release();
+            return res.status(400).json({
+                success: false,
+                message: `Jam booking di luar jam operasional bengkel (${JAM_BUKA} - ${JAM_TUTUP})`
             });
         }
 
@@ -1244,7 +1416,7 @@ export const adminUpdateBooking = async (req, res) => {
                 user_id,
                 kendaraan_id,
                 tanggal_booking,
-                jam_booking,
+                normalizedJam,
                 keluhan?.trim() || null,
                 status || existing[0].status,
                 id

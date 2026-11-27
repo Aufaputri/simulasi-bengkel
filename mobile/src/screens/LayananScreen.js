@@ -1,3 +1,4 @@
+
 // import React, { useState, useEffect } from "react";
 // import {
 //   StyleSheet,
@@ -12,21 +13,77 @@
 // import { Ionicons } from "@expo/vector-icons";
 // import api, { formatRupiah } from "../api/api";
 
+// // Deteksi jenis kendaraan ('motor' | 'mobil') dari field atau nama/merek
+// export const detectJenisKendaraan = (obj = {}) => {
+//   const raw = String(
+//     obj.jenis_kendaraan || obj.kategori || obj.tipe_kendaraan || ""
+//   )
+//     .trim()
+//     .toLowerCase();
+//   if (raw === "motor" || raw === "motorcycle" || raw === "roda 2") {
+//     return "motor";
+//   }
+//   if (raw === "mobil" || raw === "car" || raw === "roda 4") {
+//     return "mobil";
+//   }
+
+//   const text = `${obj.nama_layanan || ""} ${obj.deskripsi || ""} ${
+//     obj.merk || ""
+//   } ${obj.tipe || ""}`.toLowerCase();
+
+//   const carKeywords = [
+//     "mobil",
+//     "avanza",
+//     "xenia",
+//     "brio",
+//     "jazz",
+//     "yaris",
+//     "innova",
+//     "fortuner",
+//     "pajero",
+//     "ertiga",
+//     "ayla",
+//     "agya",
+//     "rush",
+//     "terios",
+//     "spooring",
+//     "balancing",
+//     "ac mobil",
+//   ];
+//   if (carKeywords.some((kw) => text.includes(kw))) {
+//     return "mobil";
+//   }
+
+//   return "motor";
+// };
+
 // export default function LayananScreen({ onSelectLayananForBooking }) {
 //   const [layananList, setLayananList] = useState([]);
+//   const [kendaraanList, setKendaraanList] = useState([]);
+//   const [selectedFilter, setSelectedFilter] = useState("semua"); // 'semua' | 'motor' | 'mobil'
 //   const [loading, setLoading] = useState(true);
 //   const [refreshing, setRefreshing] = useState(false);
 //   const [search, setSearch] = useState("");
 //   const [errorMsg, setErrorMsg] = useState("");
 
-//   const fetchLayanan = async () => {
+//   const fetchData = async () => {
 //     try {
 //       setErrorMsg("");
-//       const res = await api.get("/layanan");
-//       if (res.data && res.data.success) {
-//         setLayananList(res.data.data || []);
-//       } else {
-//         setLayananList(res.data || []);
+
+//       const resLayanan = await api.get("/layanan");
+//       const lData = resLayanan.data?.data || resLayanan.data || [];
+//       setLayananList(Array.isArray(lData) ? lData : []);
+
+//       try {
+//         const resKendaraan = await api.get("/kendaraan");
+//         const kData = resKendaraan.data?.data || resKendaraan.data || [];
+//         setKendaraanList(Array.isArray(kData) ? kData : []);
+//       } catch (errKendaraan) {
+//         if (errKendaraan.response?.status === 401) {
+//           setKendaraanList([]);
+//         } else {
+//           console.warn("Gagal load kendaraan:", errKendaraan.message);
+//         }
 //       }
 //     } catch (err) {
 //       console.error("Gagal load layanan:", err);
@@ -39,63 +96,91 @@
 //       setRefreshing(false);
 //     }
 //   };
-
+  
 //   useEffect(() => {
-//     fetchLayanan();
+//     fetchData();
 //   }, []);
 
 //   const onRefresh = () => {
 //     setRefreshing(true);
-//     fetchLayanan();
+//     fetchData();
 //   };
 
 //   const filteredLayanan = layananList.filter((item) => {
+//     const jenisItem = detectJenisKendaraan(item);
+//     const matchJenis =
+//       selectedFilter === "semua" ? true : jenisItem === selectedFilter;
+
 //     const q = search.toLowerCase();
 //     const nama = (item.nama_layanan || "").toLowerCase();
 //     const deskripsi = (item.deskripsi || "").toLowerCase();
-//     return nama.includes(q) || deskripsi.includes(q);
+//     const matchSearch = nama.includes(q) || deskripsi.includes(q);
+
+//     return matchJenis && matchSearch;
 //   });
 
-//   const renderItem = ({ item }) => (
-//     <View style={styles.card}>
-//       <View style={styles.cardHeader}>
-//         <View style={styles.iconBox}>
-//           <Ionicons name="construct" size={22} color="#2563EB" />
-//         </View>
-//         <View style={styles.headerInfo}>
-//           <Text style={styles.serviceTitle}>{item.nama_layanan}</Text>
-//           <View style={styles.durationBadge}>
-//             <Ionicons name="time-outline" size={13} color="#4B5563" />
-//             <Text style={styles.durationText}>
-//               {item.estimasi_durasi ? `${item.estimasi_durasi} Menit` : "-"}
-//             </Text>
+//   const renderItem = ({ item }) => {
+//     const jenisItem = detectJenisKendaraan(item);
+//     const isMobil = jenisItem === "mobil";
+
+//     return (
+//       <View style={styles.card}>
+//         <View style={styles.cardHeader}>
+//           <View style={[styles.iconBox, isMobil && styles.iconBoxMobil]}>
+//             <Ionicons
+//               name={isMobil ? "car-sport" : "bicycle"}
+//               size={22}
+//               color={isMobil ? "#0D9488" : "#2563EB"}
+//             />
+//           </View>
+//           <View style={styles.headerInfo}>
+//             <View style={styles.titleRow}>
+//               <Text style={styles.serviceTitle} numberOfLines={2}>
+//                 {item.nama_layanan}
+//               </Text>
+//               <View
+//                 style={[
+//                   styles.categoryBadge,
+//                   isMobil ? styles.badgeMobil : styles.badgeMotor,
+//                 ]}
+//               >
+//                 <Text
+//                   style={[
+//                     styles.categoryBadgeText,
+//                     isMobil ? styles.badgeTextMobil : styles.badgeTextMotor,
+//                   ]}
+//                 >
+//                   {isMobil ? "MOBIL" : "MOTOR"}
+//                 </Text>
+//               </View>
+//             </View>
+//             <View style={styles.durationBadge}>
+//               <Ionicons name="time-outline" size={13} color="#4B5563" />
+//               <Text style={styles.durationText}>
+//                 {item.estimasi_durasi ? `${item.estimasi_durasi} Menit` : "-"}
+//               </Text>
+//             </View>
 //           </View>
 //         </View>
-//       </View>
 
-//       {item.deskripsi ? (
-//         <Text style={styles.serviceDesc}>{item.deskripsi}</Text>
-//       ) : (
-//         <Text style={[styles.serviceDesc, styles.italic]}>
-//           Tidak ada deskripsi layanan.
-//         </Text>
-//       )}
+//         {item.deskripsi ? (
+//           <Text style={styles.serviceDesc}>{item.deskripsi}</Text>
+//         ) : (
+//           <Text style={[styles.serviceDesc, styles.italic]}>
+//             Tidak ada deskripsi layanan.
+//           </Text>
+//         )}
 
-//       <View style={styles.cardFooter}>
-//         <View>
-//           <Text style={styles.priceLabel}>Biaya Layanan</Text>
-//           <Text style={styles.priceValue}>{formatRupiah(item.harga)}</Text>
+//         <View style={styles.cardFooter}>
+//           <View>
+//             <Text style={styles.priceLabel}>Biaya Layanan</Text>
+//             <Text style={styles.priceValue}>{formatRupiah(item.harga)}</Text>
+//           </View>
+
 //         </View>
-//         <TouchableOpacity
-//           style={styles.bookButton}
-//           onPress={() => onSelectLayananForBooking && onSelectLayananForBooking(item)}
-//         >
-//           <Text style={styles.bookButtonText}>Pilih & Pesan</Text>
-//           <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-//         </TouchableOpacity>
 //       </View>
-//     </View>
-//   );
+//     );
+//   };
 
 //   return (
 //     <View style={styles.container}>
@@ -103,7 +188,9 @@
 //       <View style={styles.header}>
 //         <Text style={styles.headerTitle}>Katalog Layanan Servis</Text>
 //         <Text style={styles.headerSubtitle}>
-//           Pilih servis terbaik untuk perawatan prima kendaraan Anda
+//           {kendaraanList.length > 0
+//             ? "Menampilkan semua layanan (Motor & Mobil) — pilih kategori atau lanjut booking sesuai kendaraan"
+//             : "Menampilkan semua layanan bengkel untuk Motor & Mobil"}
 //         </Text>
 
 //         {/* Search Bar */}
@@ -122,6 +209,33 @@
 //             </TouchableOpacity>
 //           )}
 //         </View>
+
+//         {/* Filter Kategori Motor / Mobil */}
+//         <View style={styles.filterRow}>
+//           {[
+//             { key: "semua", label: "Semua" },
+//             { key: "motor", label: "Motor" },
+//             { key: "mobil", label: "Mobil" },
+//           ].map((tab) => {
+//             const active = selectedFilter === tab.key;
+//             return (
+//               <TouchableOpacity
+//                 key={tab.key}
+//                 style={[styles.filterChip, active && styles.filterChipActive]}
+//                 onPress={() => setSelectedFilter(tab.key)}
+//               >
+//                 <Text
+//                   style={[
+//                     styles.filterChipText,
+//                     active && styles.filterChipTextActive,
+//                   ]}
+//                 >
+//                   {tab.label}
+//                 </Text>
+//               </TouchableOpacity>
+//             );
+//           })}
+//         </View>
 //       </View>
 
 //       {/* Content */}
@@ -134,7 +248,7 @@
 //         <View style={styles.centerContainer}>
 //           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
 //           <Text style={styles.errorText}>{errorMsg}</Text>
-//           <TouchableOpacity style={styles.retryButton} onPress={fetchLayanan}>
+//           <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
 //             <Text style={styles.retryButtonText}>Coba Lagi</Text>
 //           </TouchableOpacity>
 //         </View>
@@ -154,7 +268,7 @@
 //               <Text style={styles.emptySubtitle}>
 //                 {search
 //                   ? `Tidak ada layanan yang cocok dengan "${search}"`
-//                   : "Belum ada katalog layanan yang tersedia."}
+//                   : "Belum ada katalog layanan pada kategori ini."}
 //               </Text>
 //             </View>
 //           }
@@ -173,7 +287,7 @@
 //     backgroundColor: "#FFFFFF",
 //     paddingHorizontal: 20,
 //     paddingTop: 16,
-//     paddingBottom: 16,
+//     paddingBottom: 14,
 //     borderBottomWidth: 1,
 //     borderBottomColor: "#E5E7EB",
 //   },
@@ -203,6 +317,31 @@
 //     marginLeft: 8,
 //     fontSize: 13,
 //     color: "#111827",
+//   },
+//   filterRow: {
+//     flexDirection: "row",
+//     gap: 8,
+//     marginTop: 10,
+//   },
+//   filterChip: {
+//     paddingHorizontal: 14,
+//     paddingVertical: 6,
+//     borderRadius: 20,
+//     backgroundColor: "#F3F4F6",
+//     borderWidth: 1,
+//     borderColor: "#E5E7EB",
+//   },
+//   filterChipActive: {
+//     backgroundColor: "#2563EB",
+//     borderColor: "#2563EB",
+//   },
+//   filterChipText: {
+//     fontSize: 12,
+//     fontWeight: "600",
+//     color: "#4B5563",
+//   },
+//   filterChipTextActive: {
+//     color: "#FFFFFF",
 //   },
 //   listContent: {
 //     padding: 16,
@@ -235,13 +374,44 @@
 //     justifyContent: "center",
 //     marginRight: 12,
 //   },
+//   iconBoxMobil: {
+//     backgroundColor: "#F0FDFA",
+//   },
 //   headerInfo: {
 //     flex: 1,
+//   },
+//   titleRow: {
+//     flexDirection: "row",
+//     alignItems: "flex-start",
+//     justifyContent: "space-between",
+//     gap: 8,
 //   },
 //   serviceTitle: {
 //     fontSize: 16,
 //     fontWeight: "bold",
 //     color: "#1F2937",
+//     flex: 1,
+//   },
+//   categoryBadge: {
+//     paddingHorizontal: 8,
+//     paddingVertical: 2,
+//     borderRadius: 6,
+//   },
+//   badgeMotor: {
+//     backgroundColor: "#DBEAFE",
+//   },
+//   badgeMobil: {
+//     backgroundColor: "#CCFBF1",
+//   },
+//   categoryBadgeText: {
+//     fontSize: 10,
+//     fontWeight: "bold",
+//   },
+//   badgeTextMotor: {
+//     color: "#1D4ED8",
+//   },
+//   badgeTextMobil: {
+//     color: "#0F766E",
 //   },
 //   durationBadge: {
 //     flexDirection: "row",
@@ -351,7 +521,6 @@
 //   },
 // });
 
-
 import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
@@ -449,7 +618,7 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
       setRefreshing(false);
     }
   };
-  
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -483,7 +652,7 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
             <Ionicons
               name={isMobil ? "car-sport" : "bicycle"}
               size={22}
-              color={isMobil ? "#0D9488" : "#2563EB"}
+              color={isMobil ? "#937D7A" : "#564B5E"}
             />
           </View>
           <View style={styles.headerInfo}>
@@ -508,7 +677,7 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
               </View>
             </View>
             <View style={styles.durationBadge}>
-              <Ionicons name="time-outline" size={13} color="#4B5563" />
+              <Ionicons name="time-outline" size={13} color="#564B5E" />
               <Text style={styles.durationText}>
                 {item.estimasi_durasi ? `${item.estimasi_durasi} Menit` : "-"}
               </Text>
@@ -529,15 +698,6 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
             <Text style={styles.priceLabel}>Biaya Layanan</Text>
             <Text style={styles.priceValue}>{formatRupiah(item.harga)}</Text>
           </View>
-          {/* <TouchableOpacity
-            style={styles.bookButton}
-            onPress={() =>
-              onSelectLayananForBooking && onSelectLayananForBooking(item)
-            }
-          >
-            <Text style={styles.bookButtonText}>Pilih & Pesan</Text>
-            <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-          </TouchableOpacity> */}
         </View>
       </View>
     );
@@ -547,6 +707,10 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <View style={styles.brandTag}>
+          <Ionicons name="construct" size={12} color="#564B5E" />
+          <Text style={styles.brandTagText}>MOBICARE</Text>
+        </View>
         <Text style={styles.headerTitle}>Katalog Layanan Servis</Text>
         <Text style={styles.headerSubtitle}>
           {kendaraanList.length > 0
@@ -556,17 +720,17 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
 
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
-          <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={18} color="#937D7A" />
           <TextInput
             style={styles.searchInput}
             placeholder="Cari layanan (Ganti Oli, Tune Up, Rem...)"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#937D7A"
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.75}>
+              <Ionicons name="close-circle" size={18} color="#937D7A" />
             </TouchableOpacity>
           )}
         </View>
@@ -584,6 +748,7 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
                 key={tab.key}
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 onPress={() => setSelectedFilter(tab.key)}
+                activeOpacity={0.8}
               >
                 <Text
                   style={[
@@ -602,14 +767,18 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
       {/* Content */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#564B5E" />
           <Text style={styles.loadingText}>Memuat layanan...</Text>
         </View>
       ) : errorMsg ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Ionicons name="alert-circle-outline" size={48} color="#937D7A" />
           <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchData}
+            activeOpacity={0.85}
+          >
             <Text style={styles.retryButtonText}>Coba Lagi</Text>
           </TouchableOpacity>
         </View>
@@ -619,12 +788,18 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#564B5E"
+              colors={["#564B5E"]}
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="file-tray-outline" size={48} color="#9CA3AF" />
+              <Ionicons name="file-tray-outline" size={48} color="#937D7A" />
               <Text style={styles.emptyTitle}>Layanan Tidak Ditemukan</Text>
               <Text style={styles.emptySubtitle}>
                 {search
@@ -642,42 +817,63 @@ export default function LayananScreen({ onSelectLayananForBooking }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F5EFEA",
   },
   header: {
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: "#C6B2AE",
+  },
+  brandTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
+    backgroundColor: "#FADBB2",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#C6B2AE",
+    marginBottom: 6,
+  },
+  brandTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#564B5E",
+    letterSpacing: 0.8,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#111827",
+    fontWeight: "800",
+    color: "#564B5E",
   },
   headerSubtitle: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#937D7A",
     marginTop: 2,
     marginBottom: 12,
+    lineHeight: 17,
   },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#FAF6F2",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 10,
+    borderColor: "#C6B2AE",
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 42,
+    height: 44,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 13,
-    color: "#111827",
+    color: "#564B5E",
+    fontWeight: "500",
   },
   filterRow: {
     flexDirection: "row",
@@ -686,40 +882,40 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FAF6F2",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#C6B2AE",
   },
   filterChipActive: {
-    backgroundColor: "#2563EB",
-    borderColor: "#2563EB",
+    backgroundColor: "#564B5E",
+    borderColor: "#564B5E",
   },
   filterChipText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#4B5563",
+    fontWeight: "700",
+    color: "#564B5E",
   },
   filterChipTextActive: {
-    color: "#FFFFFF",
+    color: "#FADBB2",
   },
   listContent: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 28,
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 14,
-    shadowColor: "#000",
+    shadowColor: "#564B5E",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "#C6B2AE",
   },
   cardHeader: {
     flexDirection: "row",
@@ -727,16 +923,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#EFF6FF",
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: "#FADBB2",
+    borderWidth: 1,
+    borderColor: "#C6B2AE",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
   iconBoxMobil: {
-    backgroundColor: "#F0FDFA",
+    backgroundColor: "#FAF6F2",
+    borderColor: "#937D7A",
   },
   headerInfo: {
     flex: 1,
@@ -749,117 +948,128 @@ const styles = StyleSheet.create({
   },
   serviceTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#1F2937",
+    fontWeight: "800",
+    color: "#564B5E",
     flex: 1,
   },
   categoryBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 3,
+    borderRadius: 7,
+    borderWidth: 1,
   },
   badgeMotor: {
-    backgroundColor: "#DBEAFE",
+    backgroundColor: "#564B5E",
+    borderColor: "#564B5E",
   },
   badgeMobil: {
-    backgroundColor: "#CCFBF1",
+    backgroundColor: "#FADBB2",
+    borderColor: "#C6B2AE",
   },
   categoryBadgeText: {
     fontSize: 10,
-    fontWeight: "bold",
+    fontWeight: "800",
+    letterSpacing: 0.4,
   },
   badgeTextMotor: {
-    color: "#1D4ED8",
+    color: "#FADBB2",
   },
   badgeTextMobil: {
-    color: "#0F766E",
+    color: "#564B5E",
   },
   durationBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FAF6F2",
+    borderWidth: 1,
+    borderColor: "#C6B2AE",
     alignSelf: "flex-start",
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginTop: 4,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 5,
     gap: 4,
   },
   durationText: {
     fontSize: 11,
-    color: "#4B5563",
-    fontWeight: "500",
+    color: "#564B5E",
+    fontWeight: "600",
   },
   serviceDesc: {
     fontSize: 13,
-    color: "#4B5563",
+    color: "#564B5E",
     lineHeight: 19,
     marginBottom: 14,
   },
   italic: {
     fontStyle: "italic",
-    color: "#9CA3AF",
+    color: "#937D7A",
   },
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+    borderTopColor: "#EFE6DE",
     paddingTop: 12,
   },
   priceLabel: {
     fontSize: 11,
-    color: "#6B7280",
+    color: "#937D7A",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    fontWeight: "700",
   },
   priceValue: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#2563EB",
+    fontWeight: "800",
+    color: "#564B5E",
+    marginTop: 2,
   },
   bookButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2563EB",
+    backgroundColor: "#564B5E",
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
     gap: 6,
   },
   bookButtonText: {
-    color: "#FFFFFF",
+    color: "#FADBB2",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+    backgroundColor: "#F5EFEA",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 13,
-    color: "#6B7280",
+    color: "#937D7A",
+    fontWeight: "500",
   },
   errorText: {
     marginTop: 12,
     fontSize: 13,
-    color: "#EF4444",
+    color: "#564B5E",
     textAlign: "center",
     marginBottom: 16,
+    fontWeight: "600",
   },
   retryButton: {
-    backgroundColor: "#2563EB",
+    backgroundColor: "#564B5E",
     paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   retryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+    color: "#FADBB2",
+    fontWeight: "700",
     fontSize: 13,
   },
   emptyContainer: {
@@ -869,13 +1079,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#374151",
+    fontWeight: "800",
+    color: "#564B5E",
     marginTop: 12,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#9CA3AF",
+    color: "#937D7A",
     marginTop: 4,
     textAlign: "center",
     paddingHorizontal: 20,
